@@ -1,0 +1,635 @@
+# LibreChat Configuration File
+# Full setup with OpenAI, Anthropic, Google Gemini, Custom Providers, and Advanced Features
+# Documentation: https://www.librechat.ai/docs/configuration/librechat_yaml
+
+# Configuration version (required)
+version: 1.3.4
+
+# Cache settings: Improves performance by caching responses
+cache: true
+
+# ==============================================================================
+# FILE STORAGE CONFIGURATION
+# ==============================================================================
+# Granular file storage strategies for different file types
+fileStrategy:
+  avatar: "local"        # User/agent avatar images
+  image: "local"         # Uploaded images in chats
+  document: "local"      # Document uploads (PDFs, text files, etc.)
+
+# Available strategies: "local", "s3", "firebase"
+# For production with multiple servers, consider using S3 or Firebase
+# To use S3, set environment variables: S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY
+# To use Firebase, set: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, etc.
+
+# ==============================================================================
+# INTERFACE CUSTOMIZATION
+# ==============================================================================
+interface:
+  customWelcome: 'Welcome to LibreChat! Your AI-powered assistant platform.'
+  
+  # Enable Memories management in sidebar
+  memories: true
+  
+  # Enable file search in chat area (for Agents File Search capability)
+  fileSearch: true
+  
+  # Privacy policy settings
+  privacyPolicy:
+    externalUrl: 'https://librechat.ai/privacy-policy'
+    openNewTab: true
+  
+  # Terms of service
+  termsOfService:
+    externalUrl: 'https://librechat.ai/tos'
+    openNewTab: true
+    modalAcceptance: true
+    modalTitle: 'Terms of Service'
+    modalContent: |
+      # Terms and Conditions
+
+      By using this service, you agree to:
+      - Use the platform responsibly and ethically
+      - Not share sensitive or confidential information
+      - Comply with all applicable laws and regulations
+      
+      For full terms, visit our website.
+  
+  # UI Feature toggles
+  endpointsMenu: true      # Show/hide endpoints menu
+  modelSelect: true        # Allow model selection
+  parameters: true         # Show parameter controls (temperature, etc.)
+  sidePanel: true         # Enable side panel
+  presets: true           # Enable conversation presets
+  
+  # Prompts feature
+  prompts:
+    use: true             # Users can use prompts
+    create: true          # Users can create prompts
+    share: true           # Users can share prompts with others
+    public: false         # Public prompt library (disable for privacy)
+  
+  # Bookmarks
+  bookmarks: true         # Enable conversation bookmarks
+  
+  # Multi-conversation support
+  multiConvo: true        # Enable multiple conversations
+  
+  # Agents configuration
+  agents:
+    use: true             # Users can use agents
+    create: true          # Users can create custom agents
+    share: true           # Users can share agents
+    public: false         # Public agent marketplace
+  
+  # People picker for sharing
+  peoplePicker:
+    users: true           # Share with specific users
+    groups: true          # Share with groups
+    roles: true           # Share with roles
+  
+  # Marketplace
+  marketplace:
+    use: false            # Enable marketplace for community resources
+  
+  # File citations in responses
+  fileCitations: true
+  
+  # MCP (Model Context Protocol) Servers configuration
+  mcpServers:
+    use: true             # Allow users to use MCP servers
+    create: true          # Allow users to create MCP server configs
+    share: true           # Allow sharing MCP servers
+    public: false         # Public MCP server sharing
+    
+    # Trust checkbox in MCP server creation dialog
+    trustCheckbox:
+      label:
+        en: 'I understand the risks and want to continue'
+      subLabel:
+        en: |
+          MCP servers can access external resources. Only use trusted servers. 
+          <a href="https://modelcontextprotocol.io/docs/concepts/security" target="_blank"><strong>Learn more about MCP security.</strong></a>
+  
+  # Temporary chat retention (hours) - auto-delete temporary chats
+  temporaryChatRetention: 720  # 30 days (default)
+
+# ==============================================================================
+# REGISTRATION & AUTHENTICATION
+# ==============================================================================
+registration:
+  socialLogins: ['github', 'google', 'discord', 'openid']
+  # Restrict registration to specific email domains (optional)
+  # allowedDomains:
+  #   - "yourdomain.com"
+  #   - "gmail.com"
+
+# ==============================================================================
+# BALANCE & TRANSACTIONS (Optional)
+# ==============================================================================
+# Uncomment to enable credit-based system for API usage
+# balance:
+#   enabled: true
+#   startBalance: 20000           # Starting credits for new users
+#   autoRefillEnabled: true
+#   refillIntervalValue: 30
+#   refillIntervalUnit: 'days'
+#   refillAmount: 10000
+
+# transactions:
+#   enabled: true                 # Track usage transactions
+
+# ==============================================================================
+# RATE LIMITING
+# ==============================================================================
+rateLimits:
+  fileUploads:
+    ipMax: 100                    # Max uploads per IP
+    ipWindowInMinutes: 60
+    userMax: 50                   # Max uploads per user
+    userWindowInMinutes: 60
+  conversationsImport:
+    ipMax: 50
+    ipWindowInMinutes: 60
+    userMax: 25
+    userWindowInMinutes: 60
+
+# ==============================================================================
+# SECURITY CONFIGURATIONS
+# ==============================================================================
+
+# Agent Actions domain restrictions (for OpenAPI spec validation)
+# SECURITY: Prevents SSRF attacks by restricting allowed domains
+actions:
+  allowedDomains:
+    - 'swapi.dev'
+    - 'api.openweathermap.org'
+    - 'jsonplaceholder.typicode.com'
+    - '*.example.com'              # Wildcard for subdomains
+    # Add your internal services if needed:
+    # - 'http://10.0.0.100:8080'
+
+# MCP Server domain restrictions
+# Required for Docker setups to access host services
+mcpSettings:
+  allowedDomains:
+    - 'host.docker.internal'       # Required for Docker
+    - 'localhost'                  # Local development
+    - '*.ngrok.io'                 # Ngrok tunnels
+    # Add your trusted MCP server domains
+
+# ==============================================================================
+# MCP SERVERS (Model Context Protocol)
+# ==============================================================================
+# Pre-configured MCP servers for extended functionality
+mcpServers:
+  # Filesystem access server
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - /path/to/allowed/directory  # CHANGE THIS to your allowed directory
+    timeout: 60000
+  
+  # Web browser automation (Puppeteer)
+  # puppeteer:
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@modelcontextprotocol/server-puppeteer"
+  #   timeout: 300000
+  
+  # GitHub integration
+  # github:
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@modelcontextprotocol/server-github"
+  #   env:
+  #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+  
+  # Google Drive integration
+  # gdrive:
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@modelcontextprotocol/server-gdrive"
+
+# ==============================================================================
+# AI PROVIDER ENDPOINTS
+# ==============================================================================
+endpoints:
+  
+  # --------------------------------------------------------------------------
+  # ASSISTANTS ENDPOINT (OpenAI Assistants API)
+  # --------------------------------------------------------------------------
+  assistants:
+    disableBuilder: false          # Enable Assistants Builder UI
+    pollIntervalMs: 3000          # Polling interval for updates
+    timeoutMs: 180000             # 3 minute timeout
+    
+    # Models that support retrieval/file search
+    retrievalModels: 
+      - "gpt-4o"
+      - "gpt-4o-mini"
+      - "gpt-4-turbo"
+    
+    # Available capabilities
+    capabilities: 
+      - "code_interpreter"
+      - "file_search"
+      - "actions"
+      - "tools"
+  
+  # --------------------------------------------------------------------------
+  # AGENTS ENDPOINT (LibreChat's Agent System)
+  # --------------------------------------------------------------------------
+  agents:
+    recursionLimit: 50            # Default recursion depth
+    maxRecursionLimit: 100        # Maximum allowed recursion
+    disableBuilder: false         # Enable Agent Builder UI
+    maxCitations: 30              # Max total citations
+    maxCitationsPerFile: 7        # Max citations per file
+    minRelevanceScore: 0.45       # Minimum relevance threshold (45%)
+    
+    # Available agent capabilities
+    capabilities:
+      - "execute_code"            # Code execution
+      - "file_search"             # File search/RAG
+      - "actions"                 # Custom actions (API calls)
+      - "tools"                   # Tool use
+  
+  # --------------------------------------------------------------------------
+  # ANTHROPIC (Claude) - Direct API
+  # --------------------------------------------------------------------------
+  anthropic:
+    apiKey: "${ANTHROPIC_API_KEY}"
+    streamRate: 20                # Streaming rate limit (ms)
+    titleModel: "claude-3-5-haiku-20241022"  # Model for generating titles
+    
+    # Available models
+    models:
+      default:
+        - "claude-opus-4-20250514"
+        - "claude-sonnet-4-20250514"
+        - "claude-3-7-sonnet-20250219"
+        - "claude-3-5-sonnet-20241022"
+        - "claude-3-5-haiku-20241022"
+      fetch: false                # Don't fetch models from API
+  
+  # --------------------------------------------------------------------------
+  # ANTHROPIC via VERTEX AI (Google Cloud)
+  # --------------------------------------------------------------------------
+  # Uncomment to use Claude models through Google Cloud Vertex AI
+  # anthropic:
+  #   streamRate: 20
+  #   titleModel: claude-3.5-haiku
+  #   
+  #   vertex:
+  #     region: "us-east5"
+  #     # serviceKeyFile: "/path/to/service-account.json"
+  #     # projectId: "${VERTEX_PROJECT_ID}"  # Auto-detected from service key
+  #     
+  #     models:
+  #       claude-opus-4.5:
+  #         deploymentName: claude-opus-4-5@20251101
+  #       claude-sonnet-4:
+  #         deploymentName: claude-sonnet-4-20250514
+  #       claude-3.5-haiku:
+  #         deploymentName: claude-3-5-haiku@20241022
+  
+  # --------------------------------------------------------------------------
+  # CUSTOM ENDPOINTS
+  # --------------------------------------------------------------------------
+  custom:
+    
+    # GOOGLE GEMINI via OpenRouter or Direct API
+    - name: 'Google Gemini'
+      apiKey: '${GOOGLE_API_KEY}'
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/'
+      models:
+        default:
+          - 'gemini-2.0-flash-exp'
+          - 'gemini-1.5-pro'
+          - 'gemini-1.5-flash'
+        fetch: false
+      titleConvo: true
+      titleModel: 'gemini-1.5-flash'
+      modelDisplayLabel: 'Google Gemini'
+      iconURL: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg'
+    
+    # GROQ (Fast inference)
+    - name: 'Groq'
+      apiKey: '${GROQ_API_KEY}'
+      baseURL: 'https://api.groq.com/openai/v1/'
+      models:
+        default:
+          - 'llama-3.3-70b-versatile'
+          - 'llama-3.1-70b-versatile'
+          - 'llama-3.1-8b-instant'
+          - 'mixtral-8x7b-32768'
+          - 'gemma2-9b-it'
+        fetch: false
+      titleConvo: true
+      titleModel: 'llama-3.1-8b-instant'
+      modelDisplayLabel: 'Groq'
+      dropParams: ['frequency_penalty', 'presence_penalty']
+    
+    # MISTRAL AI
+    - name: 'Mistral'
+      apiKey: '${MISTRAL_API_KEY}'
+      baseURL: 'https://api.mistral.ai/v1'
+      models:
+        default:
+          - 'mistral-large-latest'
+          - 'mistral-medium-latest'
+          - 'mistral-small-latest'
+          - 'codestral-latest'
+        fetch: true               # Fetch available models from API
+      titleConvo: true
+      titleModel: 'mistral-small-latest'
+      modelDisplayLabel: 'Mistral AI'
+      dropParams: ['stop', 'user', 'frequency_penalty', 'presence_penalty']
+    
+    # OPENROUTER (Multi-provider aggregator)
+    - name: 'OpenRouter'
+      apiKey: '${OPENROUTER_KEY}'
+      baseURL: 'https://openrouter.ai/api/v1'
+      headers:
+        x-librechat-body-parentmessageid: '{{LIBRECHAT_BODY_PARENTMESSAGEID}}'
+      models:
+        default:
+          - 'anthropic/claude-opus-4-20250514'
+          - 'google/gemini-2.0-flash-exp'
+          - 'meta-llama/llama-3.3-70b-instruct'
+          - 'deepseek/deepseek-chat'
+        fetch: true
+      titleConvo: true
+      titleModel: 'meta-llama/llama-3.3-70b-instruct'
+      dropParams: ['stop']
+      modelDisplayLabel: 'OpenRouter'
+    
+    # PERPLEXITY (Search-focused models)
+    - name: 'Perplexity'
+      apiKey: '${PERPLEXITY_API_KEY}'
+      baseURL: 'https://api.perplexity.ai'
+      models:
+        default:
+          - 'llama-3.1-sonar-large-128k-online'
+          - 'llama-3.1-sonar-small-128k-online'
+        fetch: false
+      titleConvo: true
+      titleModel: 'llama-3.1-sonar-small-128k-online'
+      modelDisplayLabel: 'Perplexity'
+      dropParams: ['stop', 'frequency_penalty', 'presence_penalty']
+
+  # --------------------------------------------------------------------------
+  # AWS BEDROCK (Uncomment to enable)
+  # --------------------------------------------------------------------------
+  # bedrock:
+  #   models:
+  #     - "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  #     - "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  #     - "amazon.titan-text-express-v1"
+  #   
+  #   # Optional: Map models to inference profiles
+  #   inferenceProfiles:
+  #     "us.anthropic.claude-sonnet-4-20250514-v1:0": "${BEDROCK_INFERENCE_PROFILE}"
+  #   
+  #   # Optional: Guardrail configuration
+  #   guardrailConfig:
+  #     guardrailIdentifier: "your-guardrail-id"
+  #     guardrailVersion: "1"
+  #     trace: "enabled"
+
+# ==============================================================================
+# MODEL SPECS (Quick Access Presets)
+# ==============================================================================
+# Create quick-access buttons for specific model configurations
+modelSpecs:
+  list:
+    # Best overall models
+    - name: "gpt-4o"
+      label: "GPT-4o (Best)"
+      description: "Most capable OpenAI model with vision and tool use"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4o"
+        temperature: 0.7
+    
+    - name: "claude-opus-4"
+      label: "Claude Opus 4 (Most Intelligent)"
+      description: "Anthropic's most powerful model for complex tasks"
+      preset:
+        endpoint: "anthropic"
+        model: "claude-opus-4-20250514"
+        temperature: 0.7
+    
+    - name: "gemini-2-flash"
+      label: "Gemini 2.0 Flash (Fast)"
+      description: "Google's fastest multimodal model"
+      group: "Google Gemini"
+      preset:
+        endpoint: "Google Gemini"
+        model: "gemini-2.0-flash-exp"
+        temperature: 0.7
+    
+    # Specialized assistants
+    - name: "coding-assistant"
+      label: "Coding Assistant"
+      description: "Optimized for programming tasks"
+      group: "Assistants"
+      groupIcon: "https://cdn-icons-png.flaticon.com/512/906/906324.png"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4o"
+        temperature: 0.3
+        instructions: "You are an expert software engineer. Provide clear, efficient, and well-documented code solutions."
+    
+    - name: "research-assistant"
+      label: "Research Assistant"
+      description: "Deep analysis and research tasks"
+      group: "Assistants"
+      preset:
+        endpoint: "anthropic"
+        model: "claude-sonnet-4-20250514"
+        temperature: 0.5
+        instructions: "You are a research assistant. Provide thorough, well-sourced analysis with citations."
+
+# ==============================================================================
+# FILE UPLOAD CONFIGURATION
+# ==============================================================================
+fileConfig:
+  endpoints:
+    assistants:
+      fileLimit: 10               # Max files per upload
+      fileSizeLimit: 20           # MB per file
+      totalSizeLimit: 100         # MB total
+      supportedMimeTypes:
+        - "image/.*"
+        - "application/pdf"
+        - "text/.*"
+        - "application/json"
+    
+    agents:
+      fileLimit: 10
+      fileSizeLimit: 20
+      totalSizeLimit: 100
+      supportedMimeTypes:
+        - "image/.*"
+        - "application/pdf"
+        - "text/.*"
+        - "application/vnd.openxmlformats-officedocument.*"  # Office docs
+    
+    openAI:
+      fileLimit: 10
+      fileSizeLimit: 20
+      totalSizeLimit: 100
+    
+    anthropic:
+      fileLimit: 5
+      fileSizeLimit: 10
+      totalSizeLimit: 50
+    
+    default:
+      fileLimit: 5
+      fileSizeLimit: 10
+      totalSizeLimit: 50
+  
+  serverFileSizeLimit: 100        # Global server limit (MB)
+  avatarSizeLimit: 2              # Avatar size limit (MB)
+  
+  # Image generation settings
+  imageGeneration:
+    percentage: 100               # Scale images to percentage
+    # px: 1024                    # Or fixed pixel size
+  
+  # Client-side image resizing
+  clientImageResize:
+    enabled: true                 # Resize large images before upload
+    maxWidth: 1900
+    maxHeight: 1900
+    quality: 0.92
+
+# ==============================================================================
+# WEB SEARCH CONFIGURATION
+# ==============================================================================
+webSearch:
+  # Reranking services (improve search result quality)
+  jinaApiKey: '${JINA_API_KEY}'
+  # jinaApiUrl: 'https://api.jina.ai/v1/rerank'  # Optional custom URL
+  cohereApiKey: '${COHERE_API_KEY}'
+  
+  # Search providers (choose one or multiple)
+  serperApiKey: '${SERPER_API_KEY}'              # Google search via Serper
+  # searxngInstanceUrl: '${SEARXNG_INSTANCE_URL}' # Self-hosted SearXNG
+  # searxngApiKey: '${SEARXNG_API_KEY}'
+  
+  # Content scrapers (for full page content)
+  firecrawlApiKey: '${FIRECRAWL_API_KEY}'
+  # firecrawlApiUrl: 'https://api.firecrawl.dev'
+
+# ==============================================================================
+# MEMORY & PERSONALIZATION
+# ==============================================================================
+memory:
+  disabled: false                 # Enable memory feature
+  
+  # Restrict memory to specific keys for better organization
+  validKeys:
+    - "preferences"               # User preferences and settings
+    - "work_info"                 # Professional information
+    - "personal_info"             # Personal details
+    - "skills"                    # User skills and expertise
+    - "interests"                 # Hobbies and interests
+    - "context"                   # General context
+    - "communication_style"       # How user prefers to communicate
+  
+  tokenLimit: 10000               # Max tokens for memory storage
+  personalize: true               # Show personalization tab in settings
+  
+  # Memory management agent
+  agent:
+    provider: "openai"
+    model: "gpt-4o-mini"
+    instructions: |
+      You are a memory management assistant. Your role is to:
+      1. Extract and store relevant user information accurately
+      2. Update existing memories when new information is provided
+      3. Organize information into appropriate categories
+      4. Remove outdated or incorrect information
+      5. Maintain privacy and only store what's explicitly shared
+    model_parameters:
+      temperature: 0.1            # Low temperature for consistency
+
+# ==============================================================================
+# SPEECH SERVICES (Text-to-Speech and Speech-to-Text)
+# ==============================================================================
+# Uncomment to enable speech features
+# speech:
+#   tts:
+#     openai:
+#       url: 'https://api.openai.com/v1'
+#       apiKey: '${OPENAI_API_KEY}'
+#       model: 'tts-1'
+#       voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
+#   
+#   stt:
+#     openai:
+#       url: 'https://api.openai.com/v1'
+#       apiKey: '${OPENAI_API_KEY}'
+#       model: 'whisper-1'
+
+# ==============================================================================
+# ENVIRONMENT VARIABLES NEEDED
+# ==============================================================================
+# Make sure to set these in your .env file:
+#
+# Core API Keys:
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+# GOOGLE_API_KEY=AI...
+#
+# Custom Providers (optional):
+# GROQ_API_KEY=gsk_...
+# MISTRAL_API_KEY=...
+# OPENROUTER_KEY=sk-or-...
+# PERPLEXITY_API_KEY=pplx-...
+#
+# Web Search (choose at least one):
+# SERPER_API_KEY=...
+# JINA_API_KEY=...
+# COHERE_API_KEY=...
+# FIRECRAWL_API_KEY=...
+#
+# File Storage (if using S3):
+# S3_BUCKET=your-bucket
+# S3_REGION=us-east-1
+# S3_ACCESS_KEY_ID=...
+# S3_SECRET_ACCESS_KEY=...
+#
+# Authentication (optional):
+# GITHUB_CLIENT_ID=...
+# GITHUB_CLIENT_SECRET=...
+# GOOGLE_CLIENT_ID=...
+# GOOGLE_CLIENT_SECRET=...
+# DISCORD_CLIENT_ID=...
+# DISCORD_CLIENT_SECRET=...
+
+# ==============================================================================
+# NOTES
+# ==============================================================================
+# 1. Replace all ${VARIABLE_NAME} with actual values in your .env file
+# 2. Update file paths (e.g., MCP server filesystem path)
+# 3. Adjust rate limits based on your expected usage
+# 4. For production, consider using S3/Firebase for file storage
+# 5. Review security settings (allowedDomains) for your use case
+# 6. Test each provider separately to ensure API keys work
+# 7. Monitor costs - some providers charge per request
+# 8. Back up this configuration file regularly
+#     #   temperature: 0.1

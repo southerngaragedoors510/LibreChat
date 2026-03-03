@@ -1,0 +1,19 @@
+name: Sync Upstream
+on:
+  schedule:
+    - cron: '0 0 * * *' # This runs every day at midnight
+  workflow_dispatch:   # This adds a button so you can run it manually
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Sync with upstream
+        uses: tgymnich/fork-sync@v2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          owner: danny-avila
+          base: main
+          head: main

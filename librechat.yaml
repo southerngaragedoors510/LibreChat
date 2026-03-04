@@ -184,14 +184,14 @@ mcpSettings:
 # Pre-configured MCP servers for extended functionality
 mcpServers:
   # Filesystem access server
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - /path/to/allowed/directory  # CHANGE THIS to your allowed directory
-    timeout: 60000
+#  filesystem:
+#    type: stdio
+#    command: npx
+#    args:
+#      - -y
+#      - "@modelcontextprotocol/server-filesystem"
+#      - /app/uploads
+#    timeout: 60000
   
   # Web browser automation (Puppeteer)
   # puppeteer:

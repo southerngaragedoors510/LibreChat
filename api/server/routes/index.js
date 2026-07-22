@@ -36,10 +36,12 @@ const keys = require('./keys');
 const user = require('./user');
 const mcp = require('./mcp');
 const rum = require('./rum');
+const errorLog = require('./errorLog');
 
 module.exports = {
   rum,
   mcp,
+  errorLog,
   auth,
   adminAuth,
   adminConfig,

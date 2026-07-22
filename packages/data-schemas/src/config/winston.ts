@@ -8,6 +8,7 @@ import {
   stripHeavyErrorFields,
 } from './parsers';
 import { getTenantId, getUserId, getRequestId, SYSTEM_TENANT_ID } from './tenantContext';
+import { MongoErrorTransport } from './errorTransport';
 import { getLogDirectory } from './utils';
 
 const { NODE_ENV, DEBUG_LOGGING, CONSOLE_JSON, DEBUG_CONSOLE, LOG_TO_FILE } = process.env;
@@ -168,6 +169,15 @@ if (useDebugConsole) {
       format: consoleFormat,
     }),
   );
+}
+
+// Persist errors to MongoDB for the token-protected /api/error-log endpoint.
+// Gated on ERROR_LOG_SECRET so the whole feature (capture + read) is off unless
+// explicitly enabled. The transport no-ops until the DB connection is ready and
+// the ErrorLog model is registered, so attaching it here (before either exists)
+// is safe.
+if (process.env.ERROR_LOG_SECRET) {
+  transports.push(new MongoErrorTransport({ level: 'error' }));
 }
 
 // Create logger

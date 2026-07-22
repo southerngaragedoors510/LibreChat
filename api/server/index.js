@@ -105,6 +105,15 @@ const startServer = async () => {
   if (!process.env.METRICS_SECRET) {
     logger.warn('[metrics] METRICS_SECRET is not set - /metrics will return 401 for all requests');
   }
+  if (process.env.ERROR_LOG_SECRET) {
+    logger.info(
+      '[errorLog] Error capture enabled - errors persist to MongoDB, readable at /api/error-log',
+    );
+  } else {
+    logger.info(
+      '[errorLog] ERROR_LOG_SECRET is not set - error capture disabled, /api/error-log returns 401',
+    );
+  }
 
   if (typeof Bun !== 'undefined') {
     axios.defaults.headers.common['Accept-Encoding'] = 'gzip';
@@ -299,6 +308,7 @@ const startServer = async () => {
   app.use('/api/tags', routes.tags);
   app.use('/api/mcp', routes.mcp);
   app.use('/api/rum', routes.rum);
+  app.use('/api/error-log', routes.errorLog);
 
   app.use('/metrics', metricsRouter);
 

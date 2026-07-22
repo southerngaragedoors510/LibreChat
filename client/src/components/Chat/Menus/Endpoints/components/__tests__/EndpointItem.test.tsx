@@ -10,8 +10,12 @@ const mockSetEndpointSearchValue = jest.fn();
 let mockSelectedValues: SelectedValues = { endpoint: '', model: '', modelSpec: '' };
 
 jest.mock('~/hooks', () => ({
-  useLocalize: () => (key: string) => key,
+  useLocalize: () => (key: string, vars?: Record<string, unknown>) =>
+    vars ? `${key} ${JSON.stringify(vars)}` : key,
+  useIsActiveItem: () => ({ ref: { current: null }, isActive: false }),
 }));
+
+let mockEndpointSearchValues: Record<string, string> = {};
 
 jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
   useModelSelectorContext: () => ({
@@ -19,11 +23,16 @@ jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
     assistantsMap: undefined,
     modelSpecs: [],
     selectedValues: mockSelectedValues,
-    endpointSearchValues: {},
+    endpointSearchValues: mockEndpointSearchValues,
     handleOpenKeyDialog: mockHandleOpenKeyDialog,
     handleSelectEndpoint: mockHandleSelectEndpoint,
+    handleSelectModel: jest.fn(),
     setEndpointSearchValue: mockSetEndpointSearchValue,
     endpointRequiresUserKey: () => false,
+    isFavoriteModel: () => false,
+    isFavoriteAgent: () => false,
+    toggleFavoriteModel: jest.fn(),
+    toggleFavoriteAgent: jest.fn(),
   }),
 }));
 
@@ -61,6 +70,7 @@ describe('EndpointItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSelectedValues = { endpoint: '', model: '', modelSpec: '' };
+    mockEndpointSearchValues = {};
   });
 
   it('does not render agents as a leaf endpoint when no selectable rows exist', () => {
@@ -76,5 +86,49 @@ describe('EndpointItem', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Custom' }));
 
     expect(mockHandleSelectEndpoint).toHaveBeenCalledWith(customEndpoint);
+  });
+
+  // --- Fix D: windowing (render-cap) for very large model lists ---
+
+  const makeEndpointWithModels = (count: number): Endpoint =>
+    ({
+      value: 'bigprovider',
+      label: 'Big Provider',
+      hasModels: true,
+      icon: null,
+      models: Array.from({ length: count }, (_, i) => ({ name: `model-${i}` })),
+    }) as Endpoint;
+
+  it('renders every model and no cap note when the list is under the cap', () => {
+    render(<EndpointItem endpoint={makeEndpointWithModels(50)} endpointIndex={0} />);
+
+    expect(screen.getByText('model-0')).toBeInTheDocument();
+    expect(screen.getByText('model-49')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-list-capped-note')).not.toBeInTheDocument();
+  });
+
+  it('caps rendered rows at 100 and shows a search hint when the list exceeds the cap', () => {
+    render(<EndpointItem endpoint={makeEndpointWithModels(300)} endpointIndex={0} />);
+
+    // First 100 rendered, the rest omitted from the DOM.
+    expect(screen.getByText('model-0')).toBeInTheDocument();
+    expect(screen.getByText('model-99')).toBeInTheDocument();
+    expect(screen.queryByText('model-100')).not.toBeInTheDocument();
+    expect(screen.queryByText('model-299')).not.toBeInTheDocument();
+
+    // The hint tells the user the rest are reachable via search.
+    const note = screen.getByTestId('model-list-capped-note');
+    expect(note).toHaveTextContent('com_endpoint_models_capped');
+    expect(note).toHaveTextContent('300');
+  });
+
+  it('applies the cap to search results, not just the unfiltered list', () => {
+    // With an active search, filterModels narrows to names containing "model-1";
+    // that still exceeds 100 (model-1, model-10..19, model-100..199, ...), so the
+    // cap must still apply.
+    mockEndpointSearchValues = { bigprovider: 'model-1' };
+    render(<EndpointItem endpoint={makeEndpointWithModels(300)} endpointIndex={0} />);
+
+    expect(screen.getByTestId('model-list-capped-note')).toBeInTheDocument();
   });
 });

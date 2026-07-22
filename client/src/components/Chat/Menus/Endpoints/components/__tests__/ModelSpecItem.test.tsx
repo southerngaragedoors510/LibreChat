@@ -11,6 +11,8 @@ jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
   useModelSelectorContext: () => ({
     handleSelectSpec: mockHandleSelectSpec,
     endpointsConfig: {},
+    isFavoriteSpec: () => mockIsFavoriteSpec,
+    toggleFavoriteSpec: mockToggleFavoriteSpec,
   }),
 }));
 
@@ -33,10 +35,6 @@ jest.mock('../SpecIcon', () => ({
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
-  useFavorites: () => ({
-    isFavoriteSpec: () => mockIsFavoriteSpec,
-    toggleFavoriteSpec: mockToggleFavoriteSpec,
-  }),
   useIsActiveItem: () => ({ ref: { current: null }, isActive: mockIsActive }),
 }));
 

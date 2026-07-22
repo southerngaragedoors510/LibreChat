@@ -6,6 +6,7 @@ import type { Endpoint, SelectedValues } from '~/common';
 import {
   useAgentDefaultPermissionLevel,
   useSelectorEffects,
+  useFavorites,
   useKeyDialog,
   useEndpoints,
   useLocalize,
@@ -37,6 +38,14 @@ type ModelSelectorContextType = {
   handleSelectSpec: (spec: t.TModelSpec) => void;
   handleSelectEndpoint: (endpoint: Endpoint) => void;
   handleSelectModel: (endpoint: Endpoint, model: string) => void;
+
+  // Favorites (lifted from per-row useFavorites; O(1) lookups)
+  isFavoriteModel: (model: string, endpoint: string) => boolean;
+  isFavoriteAgent: (agentId: string) => boolean;
+  isFavoriteSpec: (spec: string) => boolean;
+  toggleFavoriteModel: (model: { model: string; endpoint: string }) => void;
+  toggleFavoriteAgent: (agentId: string) => void;
+  toggleFavoriteSpec: (spec: string) => void;
 } & ReturnType<typeof useKeyDialog>;
 
 const ModelSelectorContext = createContext<ModelSelectorContextType | undefined>(undefined);
@@ -52,6 +61,16 @@ export function useModelSelectorContext() {
 interface ModelSelectorProviderProps {
   children: React.ReactNode;
   startupConfig: t.TStartupConfig | undefined;
+}
+
+/**
+ * Unambiguous composite key for a (endpoint, model) favorite. JSON-encoding
+ * both parts makes the boundary unambiguous, so a space (or any char) in an
+ * admin-configured endpoint name or a model id cannot cause two distinct pairs
+ * to collide onto the same key.
+ */
+function favoriteModelKey(endpoint: string, model: string): string {
+  return `${JSON.stringify(endpoint)}:${JSON.stringify(model)}`;
 }
 
 export function ModelSelectorProvider({ children, startupConfig }: ModelSelectorProviderProps) {
@@ -154,6 +173,59 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const [endpointSearchValues, setEndpointSearchValues] = useState<Record<string, string>>({});
 
   const keyProps = useKeyDialog();
+
+  /**
+   * Favorites are lifted here and called ONCE for the whole selector, instead
+   * of each row calling `useFavorites()` (which spins up its own React-Query
+   * subscriptions, toast context, atom, and mount effect). Precompute O(1)
+   * lookup Sets so per-row favorite checks don't scan the favorites array.
+   */
+  const { favorites, toggleFavoriteModel, toggleFavoriteAgent, toggleFavoriteSpec } =
+    useFavorites();
+
+  /** Separator that cannot appear in an endpoint or model id. */
+  const favoriteModelKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const fav of favorites) {
+      if (fav.model && fav.endpoint) {
+        set.add(favoriteModelKey(fav.endpoint, fav.model));
+      }
+    }
+    return set;
+  }, [favorites]);
+
+  const favoriteAgentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const fav of favorites) {
+      if (fav.agentId) {
+        set.add(fav.agentId);
+      }
+    }
+    return set;
+  }, [favorites]);
+
+  const favoriteSpecNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const fav of favorites) {
+      if (fav.spec) {
+        set.add(fav.spec);
+      }
+    }
+    return set;
+  }, [favorites]);
+
+  const isFavoriteModel = useCallback(
+    (model: string, endpoint: string) => favoriteModelKeys.has(favoriteModelKey(endpoint, model)),
+    [favoriteModelKeys],
+  );
+  const isFavoriteAgent = useCallback(
+    (agentId: string) => favoriteAgentIds.has(agentId),
+    [favoriteAgentIds],
+  );
+  const isFavoriteSpec = useCallback(
+    (spec: string) => favoriteSpecNames.has(spec),
+    [favoriteSpecNames],
+  );
 
   /** Memoized search results */
   const searchResults = useMemo(() => {
@@ -258,6 +330,12 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       setEndpointSearchValue,
       endpointRequiresUserKey,
       setSearchValue: setDebouncedSearchValue,
+      isFavoriteModel,
+      isFavoriteAgent,
+      isFavoriteSpec,
+      toggleFavoriteModel,
+      toggleFavoriteAgent,
+      toggleFavoriteSpec,
       ...keyProps,
     }),
     [
@@ -277,6 +355,12 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       setEndpointSearchValue,
       endpointRequiresUserKey,
       setDebouncedSearchValue,
+      isFavoriteModel,
+      isFavoriteAgent,
+      isFavoriteSpec,
+      toggleFavoriteModel,
+      toggleFavoriteAgent,
+      toggleFavoriteSpec,
       keyProps,
     ],
   );

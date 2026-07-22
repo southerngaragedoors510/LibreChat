@@ -9,6 +9,10 @@ jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
   useModelSelectorContext: () => ({
     handleSelectModel: mockHandleSelectModel,
     selectedValues: mockSelectedValues,
+    isFavoriteModel: () => false,
+    toggleFavoriteModel: jest.fn(),
+    isFavoriteAgent: () => false,
+    toggleFavoriteAgent: jest.fn(),
   }),
 }));
 
@@ -26,12 +30,6 @@ jest.mock('~/components/Chat/Menus/Endpoints/CustomMenu', () => {
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
-  useFavorites: () => ({
-    isFavoriteModel: () => false,
-    toggleFavoriteModel: jest.fn(),
-    isFavoriteAgent: () => false,
-    toggleFavoriteAgent: jest.fn(),
-  }),
   useIsActiveItem: () => ({ ref: { current: null }, isActive: false }),
 }));
 

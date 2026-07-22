@@ -76,6 +76,75 @@ describe('MongoErrorTransport', () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
+  it('does not leak the in-flight counter when create throws synchronously', () => {
+    let shouldThrow = true;
+    const model = {
+      create: jest.fn(() => {
+        if (shouldThrow) {
+          throw new Error('sync failure');
+        }
+        return Promise.resolve();
+      }),
+    };
+    const transport = new MongoErrorTransport({
+      getModel: () => model as never,
+      isConnected: () => true,
+      maxInFlight: 1,
+    });
+
+    // First call throws synchronously — must NOT increment in-flight.
+    transport.log({ level: 'error', message: 'first' }, jest.fn());
+    // If the counter had leaked to 1 (== cap), this second write would be dropped.
+    shouldThrow = false;
+    transport.log({ level: 'error', message: 'second' }, jest.fn());
+
+    expect(model.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops entries once the in-flight cap is reached', () => {
+    // Never-settling creates so in-flight stays pinned at the cap.
+    const model = { create: jest.fn(() => new Promise(() => undefined)) };
+    const transport = new MongoErrorTransport({
+      getModel: () => model as never,
+      isConnected: () => true,
+      maxInFlight: 2,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      transport.log({ level: 'error', message: `msg-${i}` }, jest.fn());
+    }
+
+    expect(model.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('resumes writing after in-flight inserts settle', async () => {
+    let resolveCreate: (() => void) | undefined;
+    const model = {
+      create: jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveCreate = resolve;
+          }),
+      ),
+    };
+    const transport = new MongoErrorTransport({
+      getModel: () => model as never,
+      isConnected: () => true,
+      maxInFlight: 1,
+    });
+
+    transport.log({ level: 'error', message: 'a' }, jest.fn());
+    transport.log({ level: 'error', message: 'b' }, jest.fn()); // dropped (at cap)
+    expect(model.create).toHaveBeenCalledTimes(1);
+
+    resolveCreate?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    transport.log({ level: 'error', message: 'c' }, jest.fn()); // slot freed
+    expect(model.create).toHaveBeenCalledTimes(2);
+  });
+
   describe('buildDoc', () => {
     const transport = new MongoErrorTransport({
       getModel: () => undefined,
@@ -105,15 +174,88 @@ describe('MongoErrorTransport', () => {
       expect(doc.context).toEqual({ userId: 'user-123', attempt: 3, ok: false });
     });
 
+    it('redacts a secret pattern in the message', () => {
+      const doc = transport.buildDoc({
+        level: 'error',
+        message: 'auth failed with Bearer supersecrettoken123',
+      });
+      expect(doc.message).not.toContain('supersecrettoken123');
+      expect(doc.message).toContain('[REDACTED]');
+    });
+
+    it('redacts a secret pattern in the stack', () => {
+      const doc = transport.buildDoc({
+        level: 'error',
+        message: 'm',
+        stack: 'Error: boom\n  at handler (sk-abcDEF123456 leaked)',
+      });
+      expect(doc.stack).not.toContain('sk-abcDEF123456');
+      expect(doc.stack).toContain('[REDACTED]');
+    });
+
+    it('redacts sensitive-keyed context fields but keeps safe scalars', () => {
+      const doc = transport.buildDoc({
+        level: 'error',
+        message: 'm',
+        password: 'hunter2',
+        token: 'tok_abc',
+        authorization: 'Bearer xyz',
+        userId: 'user-123',
+        attempt: 4,
+      });
+      expect(doc.context).toEqual({
+        password: '[REDACTED]',
+        token: '[REDACTED]',
+        authorization: '[REDACTED]',
+        userId: 'user-123',
+        attempt: 4,
+      });
+    });
+
+    it('redacts a secret pattern inside a non-sensitive-keyed string value', () => {
+      const doc = transport.buildDoc({
+        level: 'error',
+        message: 'm',
+        detail: 'called with api_key=leakedvalue123',
+      });
+      expect(doc.context?.detail).not.toContain('leakedvalue123');
+      expect(doc.context?.detail as string).toContain('[REDACTED]');
+    });
+
     it('omits context entirely when there are no scalar extras', () => {
       const doc = transport.buildDoc({ level: 'error', message: 'm' });
       expect(doc.context).toBeUndefined();
     });
 
-    it('defaults level to error and coerces a non-string message', () => {
-      const doc = transport.buildDoc({ message: 42 } as never);
+    it('defaults level to error', () => {
+      const doc = transport.buildDoc({ message: 'm' } as never);
       expect(doc.level).toBe('error');
-      expect(doc.message).toBe('42');
+    });
+
+    it('extracts message and stack when the message itself is an error-like object', () => {
+      const doc = transport.buildDoc({
+        level: 'error',
+        message: { message: 'e-msg', stack: 'Error: e-msg\n  at x' },
+      } as never);
+      expect(doc.message).toBe('e-msg');
+      expect(doc.stack).toContain('Error: e-msg');
+    });
+
+    it('extracts the stack from an Error in splat while keeping the prefix message', () => {
+      const err = new Error('boom-detail');
+      const info = {
+        level: 'error',
+        message: '[Prefix] failed',
+        [Symbol.for('splat')]: [err],
+      } as unknown as Record<string, unknown>;
+      const doc = transport.buildDoc(info);
+      expect(doc.message).toBe('[Prefix] failed');
+      expect(doc.stack).toContain('boom-detail');
+    });
+
+    it('falls back to a placeholder when no message can be resolved', () => {
+      const doc = transport.buildDoc({ level: 'error' } as never);
+      expect(doc.message).toBe('(no message)');
     });
   });
 });

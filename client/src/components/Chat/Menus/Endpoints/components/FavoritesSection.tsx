@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useFavorites, useLocalize } from '~/hooks';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import {
@@ -36,12 +36,10 @@ export function FavoritesSection() {
   const { favorites } = useFavorites();
   const { modelSpecs, mappedEndpoints, agentsMap, selectedValues } = useModelSelectorContext();
 
-  const groups = resolveFavoriteGroups({
-    favorites,
-    modelSpecs,
-    mappedEndpoints,
-    agentsMap,
-  });
+  const groups = useMemo(
+    () => resolveFavoriteGroups({ favorites, modelSpecs, mappedEndpoints, agentsMap }),
+    [favorites, modelSpecs, mappedEndpoints, agentsMap],
+  );
 
   if (groups.length === 0) {
     return null;

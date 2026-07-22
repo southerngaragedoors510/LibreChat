@@ -61,7 +61,15 @@ export function resolveFavoriteGroups({
 
     if (favorite.agentId) {
       const agentsEndpoint = mappedEndpoints.find((endpoint) => isAgentsEndpoint(endpoint.value));
-      if (!agentsEndpoint || !agentsMap?.[favorite.agentId]) {
+      // The agents endpoint is required to render the row at all.
+      if (!agentsEndpoint) {
+        continue;
+      }
+      // Only drop when `agentsMap` is LOADED and definitively excludes this
+      // agent. While it's still loading (`undefined`), keep the favorite
+      // optimistically so it doesn't blink out during the (gated, two-stage)
+      // agents fetch.
+      if (agentsMap && !agentsMap[favorite.agentId]) {
         continue;
       }
       addItem(AGENTS_GROUP_KEY, AGENTS_GROUP_LABEL, {
@@ -74,11 +82,18 @@ export function resolveFavoriteGroups({
 
     if (favorite.model && favorite.endpoint) {
       const endpoint = mappedEndpoints.find((e) => e.value === favorite.endpoint);
+      // The endpoint is required to render the row at all.
       if (!endpoint) {
         continue;
       }
-      const modelExists = endpoint.models?.some((m) => m.name === favorite.model);
-      if (!modelExists) {
+      // Only drop when the endpoint's model list is LOADED and definitively
+      // excludes this model. For `fetch:true` endpoints (e.g. OpenRouter) the
+      // model list arrives asynchronously and is empty/undefined until then —
+      // keep the favorite optimistically during that window rather than letting
+      // it (and the whole section) blink out.
+      const models = endpoint.models;
+      const modelsLoaded = Array.isArray(models) && models.length > 0;
+      if (modelsLoaded && !models.some((m) => m.name === favorite.model)) {
         continue;
       }
       addItem(endpoint.value, endpoint.label || endpoint.value, {

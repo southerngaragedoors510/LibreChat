@@ -167,6 +167,7 @@ export async function fetchModels({
   skipCache = false,
 }: FetchModelsParams): Promise<string[]> {
   let models: string[] = [];
+  let fetchFailed = false;
   const baseURL = direct ? extractBaseURL(_baseURL ?? '') : _baseURL;
 
   if (!baseURL && !azure) {
@@ -300,10 +301,21 @@ export async function fetchModels({
   } catch (error) {
     const logMessage = `Failed to fetch models from ${azure ? 'Azure ' : ''}${name} API`;
     logAxiosError({ message: logMessage, error: error as Error });
+    fetchFailed = true;
   }
 
-  if (modelsCache && cacheKey && models.length > 0) {
-    await modelsCache.set(cacheKey, models, Time.TWO_MINUTES);
+  if (modelsCache && cacheKey) {
+    if (models.length > 0) {
+      await modelsCache.set(cacheKey, models, Time.TWO_MINUTES);
+    } else if (fetchFailed) {
+      // Negative-cache a failed fetch briefly. Without this, every request
+      // that needs this endpoint's model list re-attempts the same
+      // slow/timing-out call for as long as the provider is unreachable —
+      // one bad request away from becoming a retry storm under real
+      // traffic. A short TTL still recovers quickly once the provider
+      // comes back.
+      await modelsCache.set(cacheKey, models, Time.THIRTY_SECONDS);
+    }
   }
 
   return models;

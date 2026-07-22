@@ -95,6 +95,33 @@ describe('fetchModels', () => {
     );
   });
 
+  it('negative-caches a failed fetch briefly instead of leaving it uncached', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    const models = await fetchModels({
+      apiKey: 'testApiKey',
+      baseURL: 'https://api.test.com',
+      name: 'TestAPI',
+    });
+
+    expect(models).toEqual([]);
+    expect(logAxiosError).toHaveBeenCalled();
+    expect(mockCacheSet).toHaveBeenCalledWith(expect.any(String), [], Time.THIRTY_SECONDS);
+  });
+
+  it('does not cache anything when caching is disabled for a failed fetch', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    await fetchModels({
+      apiKey: 'testApiKey',
+      baseURL: 'https://api.test.com',
+      name: 'TestAPI',
+      skipCache: true,
+    });
+
+    expect(mockCacheSet).not.toHaveBeenCalled();
+  });
+
   it('adds the user ID to the models query when option and ID are passed', async () => {
     const models = await fetchModels({
       user: 'user123',

@@ -9,12 +9,19 @@ const passport = require('passport');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
-const { logger, runAsSystem, tenantStorage } = require('@librechat/data-schemas');
+const mongoose = require('mongoose');
+const {
+  logger,
+  runAsSystem,
+  tenantStorage,
+  ensureErrorLogCollection,
+} = require('@librechat/data-schemas');
 const {
   isEnabled,
   apiNotFound,
   createMetrics,
   ErrorController,
+  isErrorLogConfigured,
   memoryDiagnostics,
   performStartupChecks,
   handleJsonParseError,
@@ -105,6 +112,15 @@ const startServer = async () => {
   if (!process.env.METRICS_SECRET) {
     logger.warn('[metrics] METRICS_SECRET is not set - /metrics will return 401 for all requests');
   }
+  if (isErrorLogConfigured()) {
+    logger.info(
+      '[errorLog] Error capture enabled - errors persist to MongoDB, readable at /api/error-log',
+    );
+  } else {
+    logger.info(
+      '[errorLog] ERROR_LOG_SECRET is not set - error capture disabled, /api/error-log returns 401',
+    );
+  }
 
   if (typeof Bun !== 'undefined') {
     axios.defaults.headers.common['Accept-Encoding'] = 'gzip';
@@ -112,6 +128,13 @@ const startServer = async () => {
   await connectDb();
 
   logger.info('Connected to MongoDB');
+  // Ensure the error-log collection is capped BEFORE any error can be written,
+  // so a startup-window insert can't auto-create it uncapped (unbounded growth).
+  if (isErrorLogConfigured()) {
+    await ensureErrorLogCollection(mongoose).catch((err) => {
+      logger.error('[errorLog] Failed to ensure capped error-log collection:', err);
+    });
+  }
   indexSync().catch((err) => {
     logger.error('[indexSync] Background sync failed:', err);
   });
@@ -299,6 +322,7 @@ const startServer = async () => {
   app.use('/api/tags', routes.tags);
   app.use('/api/mcp', routes.mcp);
   app.use('/api/rum', routes.rum);
+  app.use('/api/error-log', routes.errorLog);
 
   app.use('/metrics', metricsRouter);
 

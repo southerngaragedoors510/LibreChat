@@ -8,6 +8,7 @@ import {
   stripHeavyErrorFields,
 } from './parsers';
 import { getTenantId, getUserId, getRequestId, SYSTEM_TENANT_ID } from './tenantContext';
+import { MongoErrorTransport } from './errorTransport';
 import { getLogDirectory } from './utils';
 
 const { NODE_ENV, DEBUG_LOGGING, CONSOLE_JSON, DEBUG_CONSOLE, LOG_TO_FILE } = process.env;
@@ -168,6 +169,30 @@ if (useDebugConsole) {
       format: consoleFormat,
     }),
   );
+}
+
+/**
+ * Builds the MongoDB error-capture transport. Deliberately given NO winston
+ * format: the shared `fileFormat` runs `redactFormat()` before `errors()`,
+ * which mangles Error instances before their stack can be extracted (and its
+ * per-transport redaction never touches top-level metadata keys anyway). The
+ * transport instead receives the raw `info` and does its own extraction AND
+ * redaction in `buildDoc` — pulling the error from the message or a `splat`
+ * meta arg, and redacting message, stack, and context. This is more predictable
+ * than depending on winston's format ordering. Exported so tests exercise the
+ * exact construction the app uses.
+ */
+export function createMongoErrorTransport(): MongoErrorTransport {
+  return new MongoErrorTransport({ level: 'error' });
+}
+
+// Persist errors to MongoDB for the token-protected /api/error-log endpoint.
+// Gated on ERROR_LOG_SECRET so the whole feature (capture + read) is off unless
+// explicitly enabled. The transport no-ops until the DB connection is ready and
+// the ErrorLog model is registered, so attaching it here (before either exists)
+// is safe.
+if (process.env.ERROR_LOG_SECRET) {
+  transports.push(createMongoErrorTransport());
 }
 
 // Create logger

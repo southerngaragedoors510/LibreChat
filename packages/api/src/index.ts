@@ -4,6 +4,8 @@ export * from './artifacts';
 /* Admin */
 export * from './admin';
 export * from './cdn';
+/* Error log */
+export * from './errorLog';
 /* Auth */
 export * from './auth';
 /* API Keys */

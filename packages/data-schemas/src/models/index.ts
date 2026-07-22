@@ -18,6 +18,7 @@ import { createConversationModel } from './convo';
 import { createToolCallModel } from './toolCall';
 import { createAclEntryModel } from './aclEntry';
 import { createAuditLogModel } from './auditLog';
+import { createErrorLogModel } from './errorLog';
 import { createSessionModel } from './session';
 import { createBalanceModel } from './balance';
 import { createMessageModel } from './message';
@@ -75,6 +76,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
   AclEntry: ReturnType<typeof createAclEntryModel>;
   SystemGrant: ReturnType<typeof createSystemGrantModel>;
   AuditLog: ReturnType<typeof createAuditLogModel>;
+  ErrorLog: ReturnType<typeof createErrorLogModel>;
   Group: ReturnType<typeof createGroupModel>;
   Config: ReturnType<typeof createConfigModel>;
 } {
@@ -114,6 +116,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
     AclEntry: createAclEntryModel(mongoose),
     SystemGrant: createSystemGrantModel(mongoose),
     AuditLog: createAuditLogModel(mongoose),
+    ErrorLog: createErrorLogModel(mongoose),
     Group: createGroupModel(mongoose),
     Config: createConfigModel(mongoose),
   };

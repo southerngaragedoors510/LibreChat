@@ -713,4 +713,11 @@ const jsonTruncateFormat: winston.Logform.FormatWrap = winston.format(
   },
 );
 
-export { redactFormat, redactMessage, debugTraverse, jsonTruncateFormat, stripHeavyErrorFields };
+export {
+  redactFormat,
+  redactMessage,
+  debugTraverse,
+  jsonTruncateFormat,
+  stripHeavyErrorFields,
+  isSensitiveMetadataKey,
+};

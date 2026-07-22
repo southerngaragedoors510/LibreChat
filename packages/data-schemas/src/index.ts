@@ -5,6 +5,7 @@ export * from './crypto';
 export * from './schema';
 export * from './utils';
 export { createModels } from './models';
+export { ensureErrorLogCollection } from './models/errorLog';
 export {
   createMethods,
   RoleConflictError,

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import type { Model } from 'mongoose';
 import type { IErrorLog } from '~/types';
 import { redactMessage, isSensitiveMetadataKey } from './parsers';
+import { getUserId, getTenantId, getRequestId, SYSTEM_TENANT_ID } from './tenantContext';
 
 const MAX_MESSAGE = 4000;
 const MAX_STACK = 8000;
@@ -120,12 +121,13 @@ export class MongoErrorTransport extends TransportStream {
   }
 
   /**
-   * Builds the stored document, redacting defensively. The transport is wired
-   * with `fileFormat` (which redacts `message`/splat), but redaction is applied
-   * again here for the paths that format chain does NOT cover: the extracted
-   * `stack` (populated by winston's `errors` format AFTER `redactFormat` runs)
-   * and top-level metadata keys (merged onto `info`, never seen by
-   * `redactFormat`). Redaction is idempotent, so double-redacting is safe.
+   * Builds the stored document. The transport has NO winston format (see
+   * `createMongoErrorTransport`), so this is the SOLE redaction stage — message,
+   * stack, and every stored context value are redacted here. It also enriches
+   * the entry with the ambient request identifiers (userId/tenantId/requestId)
+   * that the file transport gets from `requestContextFormat` but the formatless
+   * Mongo path otherwise misses — useful for correlating a stored error to a
+   * request.
    */
   buildDoc(info: Record<string, unknown>): Partial<IErrorLog> {
     const level = typeof info.level === 'string' ? info.level : 'error';
@@ -184,6 +186,21 @@ export class MongoErrorTransport extends TransportStream {
         context[key] = truncate(redactMessage(value as string), MAX_CONTEXT_VALUE);
         count += 1;
       }
+    }
+
+    // Enrich with ambient request identifiers (safe IDs) for correlation, without
+    // overwriting any value the caller passed explicitly.
+    const userId = getUserId();
+    const requestId = getRequestId();
+    const tenantId = getTenantId();
+    if (userId && context.userId == null) {
+      context.userId = userId;
+    }
+    if (requestId && context.requestId == null) {
+      context.requestId = requestId;
+    }
+    if (tenantId && tenantId !== SYSTEM_TENANT_ID && context.tenantId == null) {
+      context.tenantId = tenantId;
     }
 
     return {

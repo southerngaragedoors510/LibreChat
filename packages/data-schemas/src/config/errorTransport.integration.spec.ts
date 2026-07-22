@@ -8,6 +8,7 @@ import { createErrorLogModel, ensureErrorLogCollection } from '~/models/errorLog
 import { ERROR_LOG_COLLECTION } from '~/schema/errorLog';
 import { createMongoErrorTransport } from './winston';
 import appLogger from './winston';
+import { tenantStorage } from './tenantContext';
 import type { IErrorLog } from '~/types';
 
 let mongoServer: MongoMemoryServer;
@@ -135,6 +136,24 @@ describe('MongoErrorTransport (integration, real logger wiring)', () => {
     expect(docs[0].message).toContain('[REDACTED]');
     expect(docs[0].context?.password).toBe('[REDACTED]');
     expect(docs[0].context?.userId).toBe('user-1');
+  });
+
+  it('enriches context with ambient request identifiers from AsyncLocalStorage', async () => {
+    await tenantStorage.run(
+      { userId: 'ambient-user', tenantId: 'tenant-7', requestId: 'req-abc' },
+      async () => {
+        logger.error('failure inside a request');
+      },
+    );
+    await flush();
+
+    const docs = await ErrorLog.find({}).lean();
+    expect(docs).toHaveLength(1);
+    expect(docs[0].context).toMatchObject({
+      userId: 'ambient-user',
+      tenantId: 'tenant-7',
+      requestId: 'req-abc',
+    });
   });
 
   it('does not capture non-error levels', async () => {

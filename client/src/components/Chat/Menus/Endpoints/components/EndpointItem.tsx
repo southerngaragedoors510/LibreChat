@@ -19,6 +19,14 @@ interface EndpointItemProps {
   endpointIndex: number;
 }
 
+/**
+ * Max model rows rendered at once for a single endpoint. Bounds the DOM/observer
+ * cost of very large `fetch:true` model lists (e.g. OpenRouter, 300+); the rest
+ * remain reachable via the endpoint's search box. Chosen generously so ordinary
+ * providers (well under this many models) are never capped.
+ */
+const MODEL_RENDER_CAP = 100;
+
 const SettingsButton = ({
   endpoint,
   className,
@@ -128,7 +136,16 @@ function EndpointMenuContent({
         assistantsMap,
       )
     : null;
-  const renderedModels = filteredModels ?? endpoint.models?.map((model) => model.name) ?? [];
+  const allModelNames = filteredModels ?? endpoint.models?.map((model) => model.name) ?? [];
+  // Windowing: cap how many model rows are mounted at once. A `fetch:true`
+  // provider (e.g. OpenRouter) can carry 300+ models; mounting them all makes
+  // opening the submenu slow (each row is an Ariakit item + observers). Render
+  // only the first MODEL_RENDER_CAP; the rest stay reachable via the endpoint's
+  // own search box, which re-filters the full list. (Full DOM virtualization is
+  // avoided deliberately: it would break Ariakit's cross-item keyboard
+  // navigation and typeahead, which can't navigate to unmounted items.)
+  const capped = allModelNames.length > MODEL_RENDER_CAP;
+  const renderedModels = capped ? allModelNames.slice(0, MODEL_RENDER_CAP) : allModelNames;
   const showMarketplace =
     endpoint.showMarketplace === true && marketplaceSearchMatches(searchValue, localize);
   const hasSelectableRows = endpointSpecs.length > 0 || renderedModels.length > 0;
@@ -140,10 +157,20 @@ function EndpointMenuContent({
       {endpointSpecs.map((spec: TModelSpec) => (
         <ModelSpecItem key={spec.name} spec={spec} isSelected={selectedSpec === spec.name} />
       ))}
-      {filteredModels
-        ? renderEndpointModels(endpoint, endpoint.models || [], filteredModels, endpointIndex)
-        : endpoint.models &&
-          renderEndpointModels(endpoint, endpoint.models, undefined, endpointIndex)}
+      {endpoint.models &&
+        renderEndpointModels(endpoint, endpoint.models, renderedModels, endpointIndex)}
+      {capped && (
+        <div
+          className="px-3 py-2 text-xs text-text-secondary"
+          role="note"
+          data-testid="model-list-capped-note"
+        >
+          {localize('com_endpoint_models_capped', {
+            0: String(MODEL_RENDER_CAP),
+            1: String(allModelNames.length),
+          })}
+        </div>
+      )}
     </>
   );
 }

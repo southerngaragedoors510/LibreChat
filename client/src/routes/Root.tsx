@@ -18,7 +18,7 @@ import {
 } from '~/hooks';
 import KeyboardShortcutsDialog from '~/components/Nav/KeyboardShortcutsDialog';
 import KeyboardDeleteDialog from '~/components/Nav/KeyboardDeleteDialog';
-import { useUserTermsQuery, useGetStartupConfig } from '~/data-provider';
+import { useUserTermsQuery, useGetStartupConfig, useGetFavoritesQuery } from '~/data-provider';
 import useKeyboardShortcuts from '~/hooks/useKeyboardShortcuts';
 import { UnifiedSidebar } from '~/components/UnifiedSidebar';
 import { TermsAndConditionsModal } from '~/components/ui';
@@ -57,6 +57,12 @@ export default function Root() {
   });
 
   useSearchEnabled(isAuthenticated);
+
+  // Warm the favorites list once at the authenticated root so it is already
+  // cached when the model-selector dropdown opens, instead of loading lazily on
+  // first open (which left "My Favorites" briefly empty). React Query dedupes
+  // with the per-consumer query inside useFavorites.
+  useGetFavoritesQuery({ enabled: isAuthenticated });
 
   useEffect(() => {
     if (termsData) {

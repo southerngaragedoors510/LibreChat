@@ -5,15 +5,13 @@ import { CustomGroup } from '../CustomGroup';
 jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
   useModelSelectorContext: () => ({
     selectedValues: { endpoint: '', model: '', modelSpec: 'spec-b' },
+    isFavoriteSpec: () => false,
+    toggleFavoriteSpec: jest.fn(),
   }),
 }));
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
-  useFavorites: () => ({
-    isFavoriteSpec: () => false,
-    toggleFavoriteSpec: jest.fn(),
-  }),
   useIsActiveItem: () => ({ ref: { current: null }, isActive: false }),
 }));
 
@@ -29,12 +27,7 @@ jest.mock('~/components/Chat/Menus/Endpoints/CustomMenu', () => {
       { children, label, ...rest }: { children?: React.ReactNode; label?: React.ReactNode },
       ref: React.Ref<HTMLDivElement>,
     ) {
-      return React.createElement(
-        'div',
-        { ref, role: 'group', ...rest },
-        label,
-        children,
-      );
+      return React.createElement('div', { ref, role: 'group', ...rest }, label, children);
     }),
     CustomMenuItem: React.forwardRef(function MockMenuItem(
       { children, ...rest }: { children?: React.ReactNode },

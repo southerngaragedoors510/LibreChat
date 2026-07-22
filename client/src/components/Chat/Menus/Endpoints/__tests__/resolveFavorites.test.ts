@@ -145,4 +145,56 @@ describe('resolveFavoriteGroups', () => {
     });
     expect(groups).toEqual([]);
   });
+
+  // --- Fix A: keep optimistically while reference data is still loading ---
+
+  it('keeps a model favorite when the endpoint exists but its model list is not loaded yet (undefined)', () => {
+    const loadingEndpoint = { value: 'OpenRouter', label: 'OpenRouter' } as Endpoint; // models undefined
+    const favorites: TUserFavorite[] = [
+      { model: 'nousresearch/hermes-3-llama-3.1-70b', endpoint: 'OpenRouter' },
+    ];
+    const groups = resolveFavoriteGroups({
+      favorites,
+      modelSpecs,
+      mappedEndpoints: [openAIEndpoint, loadingEndpoint],
+      agentsMap,
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('OpenRouter');
+    expect(groups[0].items).toEqual([
+      { type: 'model', endpoint: loadingEndpoint, modelId: 'nousresearch/hermes-3-llama-3.1-70b' },
+    ]);
+  });
+
+  it('keeps a model favorite when the endpoint model list is present but still empty (loading)', () => {
+    const loadingEndpoint = { value: 'OpenRouter', label: 'OpenRouter', models: [] } as Endpoint;
+    const favorites: TUserFavorite[] = [{ model: 'anthropic/claude', endpoint: 'OpenRouter' }];
+    const groups = resolveFavoriteGroups({
+      favorites,
+      modelSpecs,
+      mappedEndpoints: [loadingEndpoint],
+      agentsMap,
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items[0]).toEqual({
+      type: 'model',
+      endpoint: loadingEndpoint,
+      modelId: 'anthropic/claude',
+    });
+  });
+
+  it('keeps an agent favorite while agentsMap is still loading (undefined)', () => {
+    const favorites: TUserFavorite[] = [{ agentId: 'agent-1' }];
+    const groups = resolveFavoriteGroups({
+      favorites,
+      modelSpecs,
+      mappedEndpoints,
+      agentsMap: undefined,
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('__agents__');
+    expect(groups[0].items).toEqual([
+      { type: 'model', endpoint: agentsEndpoint, modelId: 'agent-1' },
+    ]);
+  });
 });

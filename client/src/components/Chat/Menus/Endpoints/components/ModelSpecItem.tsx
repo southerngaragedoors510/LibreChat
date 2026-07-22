@@ -2,7 +2,7 @@ import React from 'react';
 import { VisuallyHidden } from '@ariakit/react';
 import { CheckCircle2, Pin, PinOff } from 'lucide-react';
 import type { TModelSpec } from 'librechat-data-provider';
-import { useFavorites, useLocalize, useIsActiveItem } from '~/hooks';
+import { useLocalize, useIsActiveItem } from '~/hooks';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import { CustomMenuItem as MenuItem } from '../CustomMenu';
 import SpecDescription from './SpecDescription';
@@ -14,10 +14,10 @@ interface ModelSpecItemProps {
   isSelected: boolean;
 }
 
-export function ModelSpecItem({ spec, isSelected }: ModelSpecItemProps) {
+function ModelSpecItemComponent({ spec, isSelected }: ModelSpecItemProps) {
   const localize = useLocalize();
-  const { handleSelectSpec, endpointsConfig } = useModelSelectorContext();
-  const { isFavoriteSpec, toggleFavoriteSpec } = useFavorites();
+  const { handleSelectSpec, endpointsConfig, isFavoriteSpec, toggleFavoriteSpec } =
+    useModelSelectorContext();
   const { showIconInMenu = true } = spec;
 
   const { ref: itemRef, isActive } = useIsActiveItem<HTMLDivElement>();
@@ -87,6 +87,8 @@ export function ModelSpecItem({ spec, isSelected }: ModelSpecItemProps) {
     </MenuItem>
   );
 }
+
+export const ModelSpecItem = React.memo(ModelSpecItemComponent);
 
 export function renderModelSpecs(specs: TModelSpec[], selectedSpec: string) {
   if (!specs || specs.length === 0) {

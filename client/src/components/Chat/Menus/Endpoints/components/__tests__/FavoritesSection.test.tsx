@@ -12,16 +12,16 @@ let mockContextValues = {
   handleSelectSpec: jest.fn(),
   handleSelectModel: jest.fn(),
   endpointsConfig: {},
-};
-
-let mockFavoritesValues = {
-  favorites: [],
   isFavoriteSpec: (name: string) => false,
   toggleFavoriteSpec: jest.fn(),
   isFavoriteModel: (model: string, endpoint: string) => false,
   toggleFavoriteModel: jest.fn(),
   isFavoriteAgent: (model: string) => false,
   toggleFavoriteAgent: jest.fn(),
+};
+
+let mockFavoritesValues = {
+  favorites: [],
 };
 
 jest.mock('../../resolveFavorites', () => ({
@@ -56,12 +56,7 @@ jest.mock('~/components/Chat/Menus/Endpoints/CustomMenu', () => {
       { children, label, ...rest }: { children?: React.ReactNode; label?: React.ReactNode },
       ref: React.Ref<HTMLDivElement>,
     ) {
-      return React.createElement(
-        'div',
-        { ref, role: 'group', ...rest },
-        label,
-        children,
-      );
+      return React.createElement('div', { ref, role: 'group', ...rest }, label, children);
     }),
     CustomMenuItem: React.forwardRef(function MockMenuItem(
       { children, ...rest }: { children?: React.ReactNode },
@@ -144,15 +139,15 @@ describe('FavoritesSection', () => {
       handleSelectSpec: jest.fn(),
       handleSelectModel: jest.fn(),
       endpointsConfig: {},
-    };
-    mockFavoritesValues = {
-      favorites: [],
       isFavoriteSpec: (name: string) => false,
       toggleFavoriteSpec: jest.fn(),
       isFavoriteModel: (model: string, endpoint: string) => false,
       toggleFavoriteModel: jest.fn(),
       isFavoriteAgent: (model: string) => false,
       toggleFavoriteAgent: jest.fn(),
+    };
+    mockFavoritesValues = {
+      favorites: [],
     };
   });
 
@@ -218,7 +213,7 @@ describe('FavoritesSection', () => {
   });
 
   it('shows the unpin button for a favorited spec', () => {
-    mockFavoritesValues.isFavoriteSpec = (name: string) => name === 'hermes-3-70b';
+    mockContextValues.isFavoriteSpec = (name: string) => name === 'hermes-3-70b';
     mockGroups = [specItem];
     render(<FavoritesSection />);
     expect(screen.getByRole('button', { name: 'com_ui_unpin' })).toBeInTheDocument();

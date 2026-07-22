@@ -3,7 +3,7 @@ import { VisuallyHidden } from '@ariakit/react';
 import { CheckCircle2, EarthIcon, Pin, PinOff } from 'lucide-react';
 import { isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type { Endpoint } from '~/common';
-import { useFavorites, useLocalize, useIsActiveItem } from '~/hooks';
+import { useLocalize, useIsActiveItem } from '~/hooks';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import { CustomMenuItem as MenuItem } from '../CustomMenu';
 import { cn } from '~/utils';
@@ -13,9 +13,16 @@ interface EndpointModelItemProps {
   endpoint: Endpoint;
 }
 
-export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps) {
+function EndpointModelItemComponent({ modelId, endpoint }: EndpointModelItemProps) {
   const localize = useLocalize();
-  const { handleSelectModel, selectedValues } = useModelSelectorContext();
+  const {
+    handleSelectModel,
+    selectedValues,
+    isFavoriteModel,
+    toggleFavoriteModel,
+    isFavoriteAgent,
+    toggleFavoriteAgent,
+  } = useModelSelectorContext();
   const {
     endpoint: selectedEndpoint,
     model: selectedModel,
@@ -23,8 +30,6 @@ export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps)
   } = selectedValues;
   const isSelected =
     !selectedSpec && selectedEndpoint === endpoint.value && selectedModel === modelId;
-  const { isFavoriteModel, toggleFavoriteModel, isFavoriteAgent, toggleFavoriteAgent } =
-    useFavorites();
 
   const { ref: itemRef, isActive } = useIsActiveItem<HTMLDivElement>();
 
@@ -140,6 +145,8 @@ export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps)
     </MenuItem>
   );
 }
+
+export const EndpointModelItem = React.memo(EndpointModelItemComponent);
 
 export function renderEndpointModels(
   endpoint: Endpoint | null,

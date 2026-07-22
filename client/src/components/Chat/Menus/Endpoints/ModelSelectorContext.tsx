@@ -183,7 +183,6 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const { favorites, toggleFavoriteModel, toggleFavoriteAgent, toggleFavoriteSpec } =
     useFavorites();
 
-  /** Separator that cannot appear in an endpoint or model id. */
   const favoriteModelKeys = useMemo(() => {
     const set = new Set<string>();
     for (const fav of favorites) {
